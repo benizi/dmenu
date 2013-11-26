@@ -59,6 +59,18 @@ static Clr *scheme[SchemeLast];
 
 static int (*fstrncmp)(const char *, const char *, size_t) = strncmp;
 static char *(*fstrstr)(const char *, const char *) = strstr;
+static int (*fdrawtext)(Drw *drw, int x, int y, unsigned int w, unsigned int h, unsigned int lpad, const char *text, int invert) = drw_text;
+
+static int
+secret_text(Drw *drw, int x, int y, unsigned int w, unsigned int h, unsigned int lpad, const char *text, int invert)
+{
+	char *asterisks = (char *)malloc((sizeof(char) * (1 + strlen(text))));
+	int i;
+	for (i = 0; text[i]; i++)
+		asterisks[i] = '*';
+	asterisks[i] = '\0';
+	return drw_text(drw, x, y, w, h, lpad, asterisks, invert);
+}
 
 static void
 appenditem(struct item *item, struct item **list, struct item **last)
@@ -154,7 +166,7 @@ drawmenu(void)
 	/* draw input field */
 	w = (lines > 0 || !matches) ? mw - x : inputw;
 	drw_setscheme(drw, scheme[SchemeNorm]);
-	drw_text(drw, x, 0, w, bh, lrpad / 2, text, 0);
+	fdrawtext(drw, x, 0, w, bh, lrpad / 2, text, 0);
 
 	curpos = TEXTW(text) - TEXTW(&text[cursor]);
 	if ((curpos += lrpad / 2 - 1) < w) {
@@ -694,7 +706,8 @@ static void
 usage(void)
 {
 	fputs("usage: dmenu [-bfiv] [-l lines] [-p prompt] [-fn font] [-m monitor]\n"
-	      "             [-nb color] [-nf color] [-sb color] [-sf color] [-w windowid]\n", stderr);
+	      "             [-nb color] [-nf color] [-sb color] [-sf color] [-w windowid]\n"
+	      "             [--secret]\n", stderr);
 	exit(1);
 }
 
@@ -716,6 +729,8 @@ main(int argc, char *argv[])
 		else if (!strcmp(argv[i], "-i")) { /* case-insensitive item matching */
 			fstrncmp = strncasecmp;
 			fstrstr = cistrstr;
+		} else if (!strcmp(argv[i], "--secret")) { /* secret text */
+			fdrawtext = secret_text;
 		} else if (i + 1 == argc)
 			usage();
 		/* these options take one argument */
